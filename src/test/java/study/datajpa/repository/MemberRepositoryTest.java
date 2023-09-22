@@ -1,6 +1,6 @@
 package study.datajpa.repository;
 
-import org.assertj.core.api.Assertions;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,9 +17,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
@@ -27,6 +25,7 @@ class MemberRepositoryTest {
 
     @Autowired MemberRepository memberRepository;
     @Autowired TeamRepository teamRepository;
+    @Autowired EntityManager em;
 
     @Test
     public void testMember() {
@@ -227,4 +226,35 @@ class MemberRepositoryTest {
         assertThat(page.hasNext()).isTrue();
     }
      */
+
+    @Test
+    public void bulkUpdate() {
+
+        // give
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 19));
+        memberRepository.save(new Member("member3", 20));
+        memberRepository.save(new Member("member4", 21));
+        memberRepository.save(new Member("member5", 40));
+
+        // when
+        int resultCount = memberRepository.bulkAgePlus(20);
+
+        /* === 벌크 연산 시 발생하는 문제점 해결 ===
+         * 벌크 연산 시에는 영속성 컨텍스트를 무시하고 바로 DB 업데이트를 진행시킴
+         * 따라서 flush 후 clear하지 않는 이상 해당 트랜잭션이 끝나기 전까지는
+         * 영속성 컨텍스트에는 값이 업데이트 되지 않음
+         * 아래 코드를 통해 직접 clear 후 실행해야 원하는 동작이 실행됨.
+         *
+         * 아래 코드를 사용하지 않으려면 @Modifying 옵션에서 clearAutomatically = true 해주면 됨
+         * */
+//        em.clear();
+
+        List<Member> result = memberRepository.findByUsername("member5");
+        Member member5 = result.get(0);
+        System.out.println("member5 = " + member5);
+
+        // then
+        assertThat(resultCount).isEqualTo(3);
+    }
 }
